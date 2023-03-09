@@ -1,19 +1,28 @@
-FROM python:3.6.4
+FROM python:3.7-slim-buster
+# 6.4
 
-# Create the user that will run the app
-RUN adduser --disabled-password --gecos '' ml-api-user
+# RUN apt-get install -y bazel-bootstrap
 
 WORKDIR /opt/ml_api
 
 ARG PIP_EXTRA_INDEX_URL
-ENV FLASK_APP run.py
+ENV FLASK_APP=run.py \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    WORKDIR=/opt/ml_api
+
+# Install neural_network_model from local folder
+ADD ./packages/neural_network_model ${WORKDIR}/
+RUN apt update && apt-get install -y gcc g++ python3-dev && pip install numpy>=1.13.3 scipy && pip install -e ${WORKDIR}
 
 # Install requirements, including from Gemfury
-ADD ./packages/ml_api /opt/ml_api/
-RUN pip install --upgrade pip
+ADD ./packages/ml_api ${WORKDIR}/
+
 RUN pip install -r /opt/ml_api/requirements.txt
 
-RUN chmod +x /opt/ml_api/run.sh
+
+# Create the user that will run the app
+RUN adduser --disabled-password --gecos '' ml-api-user
+RUN chmod +x ${WORKDIR}/run.sh
 RUN chown -R ml-api-user:ml-api-user ./
 
 USER ml-api-user
